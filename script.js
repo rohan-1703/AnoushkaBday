@@ -81,21 +81,36 @@ function setMusicUI(isPlaying) {
   playHero.textContent = isPlaying ? "Ⅱ Our Song" : "♥ Play Our Song";
 }
 
+let musicAutoplayAttempted = false;
+
 function startMusicAutoplay() {
-  if (!audioSource || !audioSource.src || !song) return;
+  if (!audioSource || !audioSource.src || !song || musicAutoplayAttempted) return;
+  musicAutoplayAttempted = true;
 
   song.volume = 0.8;
   song.muted = true;
   song.autoplay = true;
-  song.play().then(() => {
-    setMusicUI(true);
-    setTimeout(() => {
+
+  const beginPlayback = () => {
+    song.play().then(() => {
+      setMusicUI(true);
+      setTimeout(() => {
+        song.muted = false;
+        song.volume = 0.8;
+      }, 500);
+    }).catch(() => {
+      setMusicUI(false);
       song.muted = false;
       song.volume = 0.8;
-    }, 700);
-  }).catch(() => {
-    setMusicUI(false);
-  });
+    });
+  };
+
+  if (song.readyState >= 2) {
+    beginPlayback();
+  } else {
+    song.addEventListener("canplay", beginPlayback, { once: true });
+    song.load();
+  }
 }
 
 function toggleMusic() {
@@ -118,8 +133,14 @@ function toggleMusic() {
 window.addEventListener("load", () => {
   setTimeout(() => {
     startMusicAutoplay();
-  }, 1200);
+  }, 300);
 });
+
+window.addEventListener("pointerdown", () => {
+  if (song && !song.paused && song.muted) {
+    song.muted = false;
+  }
+}, { once: true });
 
 musicBtn.addEventListener("click", toggleMusic);
 playHero.addEventListener("click", toggleMusic);
